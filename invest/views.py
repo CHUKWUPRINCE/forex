@@ -1027,11 +1027,11 @@ def forgot_password(request):
             reset_link = request.build_absolute_uri(f'/reset-password/{uid}/{token}/')
             
             # Email content
-            subject = 'Password Reset - Profitlynx Investment Platform'
+            subject = 'Password Reset - ForexFortune Investment Platform'
             message = f"""
             Hello {user.first_name or user.username},
             
-            You requested a password reset for your Profitlynx account.
+            You requested a password reset for your ForexFortune account.
             
             Click the link below to reset your password:
             {reset_link}
@@ -1041,7 +1041,7 @@ def forgot_password(request):
             If you didn't request this reset, please ignore this email.
             
             Best regards,
-            Profitlynx Investment Team
+            ForexFortune Investment Team
             """
             
             # Send email
