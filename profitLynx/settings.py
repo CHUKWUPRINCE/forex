@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-c0qz2c0u9ky69v8@27o54t&7l3l0(^*0tedzop8&+z%fii(tx#
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['forexfortune-kvkp.onrender.com', 'www.forexfortune.info', '127.0.0.1', 'forexfortune.info']
+ALLOWED_HOSTS = ['forexfortune.onrender.com', 'www.forexfortune.info', '127.0.0.1', 'forexfortune.info', 'www.forexfortune.onrender.com']
 
 AUTH_USER_MODEL = 'invest.User'
 
