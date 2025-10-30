@@ -1,3 +1,7 @@
+# ...existing code...
+from decimal import Decimal, InvalidOperation
+from django.db import transaction
+# ...existing code...
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -139,7 +143,7 @@ def deposit(request):
     def create_investment_tiers():
         tiers_data = [
             {
-                'name': 'BUSINESS',
+                'name': 'BASIC',
                 'roi_percentage': Decimal('10.00'),
                 'duration_days': 5,
                 'min_investment': Decimal('100.00'),
@@ -150,7 +154,7 @@ def deposit(request):
                 'capital_return': True
             },
             {
-                'name': 'PARTNERSHIP',
+                'name': 'STANDARD',
                 'roi_percentage': Decimal('15.00'),
                 'duration_days': 5,
                 'min_investment': Decimal('3000.00'),
@@ -161,7 +165,7 @@ def deposit(request):
                 'capital_return': True
             },
             {
-                'name': 'TRADEMARK',
+                'name': 'PROFESSIONAL',
                 'roi_percentage': Decimal('25.00'),
                 'duration_days': 7,
                 'min_investment': Decimal('15000.00'),
@@ -172,7 +176,7 @@ def deposit(request):
                 'capital_return': True
             },
             {
-                'name': 'VIP',
+                'name': 'ADVANCED',
                 'roi_percentage': Decimal('50.00'),
                 'duration_days': 7,
                 'min_investment': Decimal('50000.00'),
@@ -223,10 +227,10 @@ def deposit(request):
             
             # Get investment tier by name
             tier_mapping = {
-                'business': 'BUSINESS',
-                'partnership': 'PARTNERSHIP', 
-                'trademark': 'TRADEMARK',
-                'vip': 'VIP'
+                'basic': 'BASIC',
+                'standard': 'STANDARD', 
+                'professional': 'PROFESSIONAL',
+                'advanced': 'ADVANCED'
             }
             tier_name = tier_mapping.get(selected_tier.lower())
             
@@ -607,6 +611,74 @@ def admin_deposits(request):
             messages.error(request, f'Error processing deposit: {str(e)}')
         
         return redirect('admin_deposits')
+    
+
+
+
+# (placed after admin_deposits view and before admin_investments view)
+@user_passes_test(is_admin)
+def add_funds(request):
+    """
+    Admin view: add funds to a user's account.
+    Creates an APPROVED DEPOSIT transaction and triggers balance recalculation.
+    """
+    users = User.objects.filter(is_staff=False).order_by('username')
+
+    if request.method == 'POST':
+        user_id = request.POST.get('user')
+        amount_raw = request.POST.get('amount')
+        note = request.POST.get('note', '').strip()
+
+        # Validate inputs
+        if not user_id:
+            messages.error(request, 'Please select a user.')
+            return redirect('add_funds')
+
+        try:
+            amount = Decimal(amount_raw)
+        except (TypeError, InvalidOperation):
+            messages.error(request, 'Invalid amount.')
+            return redirect('add_funds')
+
+        if amount <= 0:
+            messages.error(request, 'Amount must be greater than 0.')
+            return redirect('add_funds')
+
+        user = get_object_or_404(User, pk=user_id)
+
+        try:
+            with transaction.atomic():
+                # Create APPROVED deposit transaction
+                Transaction.objects.create(
+                    user=user,
+                    transaction_type='DEPOSIT',
+                    amount=amount,
+                    status='APPROVED',
+                    # if your Transaction model uses a different field name for notes, adjust/remove
+                    notes=note if hasattr(Transaction, 'notes') else ''
+                )
+
+                # Recalculate stored balances using existing helper if available
+                try:
+                    user.update_balances()
+                except Exception:
+                    # Fallback: attempt to update common balance fields directly
+                    if hasattr(user, 'total_deposited'):
+                        user.total_deposited = (user.total_deposited or Decimal('0.00')) + amount
+                    if hasattr(user, 'balance'):
+                        user.balance = (user.balance or Decimal('0.00')) + amount
+                    user.save()
+        except Exception as e:
+            messages.error(request, f'Error adding funds: {e}')
+            return redirect('add_funds')
+
+        messages.success(request, f'Successfully added {amount} to {user.username}.')
+        return redirect('admin_dashboard')  # change to your preferred admin landing page name
+
+    return render(request, 'admins/add_funds.html', {'users': users})
+# ...existing code... 
+    
+
     
     # Get all deposits with related data
     deposits = DepositRequest.objects.select_related(
@@ -1027,11 +1099,11 @@ def forgot_password(request):
             reset_link = request.build_absolute_uri(f'/reset-password/{uid}/{token}/')
             
             # Email content
-            subject = 'Password Reset - ForexFortune Investment Platform'
+            subject = 'Password Reset - Profitlynx Investment Platform'
             message = f"""
             Hello {user.first_name or user.username},
             
-            You requested a password reset for your ForexFortune account.
+            You requested a password reset for your Profitlynx account.
             
             Click the link below to reset your password:
             {reset_link}
@@ -1041,7 +1113,7 @@ def forgot_password(request):
             If you didn't request this reset, please ignore this email.
             
             Best regards,
-            ForexFortune Investment Team
+            Profitlynx Investment Team
             """
             
             # Send email
